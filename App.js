@@ -18,6 +18,8 @@ Notifications.setNotificationHandler({
 
 async function registerForPushNotifications() {
   try {
+    setStatus('Getting permission...');
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -27,34 +29,44 @@ async function registerForPushNotifications() {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Notification permission denied');
+      setStatus('Permission denied ❌');
       return null;
     }
+
+    setStatus('Getting token...');
 
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId: '6e4c8220-cc85-4785-8d04-eb67ad882c58'
     });
 
-    console.log('Got token:', tokenData.data);
+    // 🔥 SHOW FULL TOKEN
+    setStatus(`TOKEN: ${tokenData.data}`);
+    alert(tokenData.data); // 👈 easiest way to copy
+
     return tokenData.data;
+
   } catch (e) {
-    console.error('Token error:', e.message);
+    setStatus(`Token error: ${e.message}`);
     return null;
   }
 }
 
 async function registerDevice(pushToken) {
   try {
-    console.log('Registering token:', pushToken);
+    setStatus('Calling /register...');
+
     const res = await fetch(`${SERVER_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: pushToken, device: 'Android' })
     });
-    const data = await res.json();
-    console.log('Register response:', JSON.stringify(data));
+
+    const text = await res.text();
+
+    setStatus(`Register success ✅: ${text}`);
+
   } catch (e) {
-    console.error('Registration error:', e.message);
+    setStatus(`Register error ❌: ${e.message}`);
   }
 }
 
@@ -164,7 +176,7 @@ export default function App() {
 
       {/* Status bar showing token and connection status */}
       <View style={styles.statusBar}>
-        <Text style={styles.statusBarText} numberOfLines={1}>
+        <Text style={styles.statusBarText}>
           {token ? `Token: ${token.slice(0, 35)}...` : status}
         </Text>
       </View>
@@ -192,5 +204,5 @@ const styles = StyleSheet.create({
   summary:        { fontSize: 14, color: '#444', lineHeight: 21, marginTop: 10 },
   tapHint:        { fontSize: 11, color: '#bbb', marginTop: 8, textAlign: 'right' },
   statusBar:      { backgroundColor: '#1D1D1D', padding: 8, paddingHorizontal: 14 },
-  statusBarText:  { fontSize: 10, color: '#888' },
+  statusBarText:  { fontSize: 10, color: '#888', flexWrap: 'wrap' },
 });
