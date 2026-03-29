@@ -27,7 +27,7 @@
                 "monochromeImage": "./assets/android-icon-monochrome.png"
             },
             "package": "com.anonymous.NewsApp",
-            "googleServicesFile": "./android/app/google-services.json"
+            "googleServicesFile": "./google-services.json"
         },
         "web":
         {
