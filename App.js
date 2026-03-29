@@ -2,12 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, View, Text, FlatList,
   TouchableOpacity, ActivityIndicator,
-  RefreshControl, Platform, Alert
+  RefreshControl, Alert
 } from 'react-native';
-import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 
-const SERVER_URL = "https://46b1-2405-201-e-4a16-6ca5-6ef5-3232-de48.ngrok-free.app";
+const SERVER_URL = "https://unharped-semicircularly-dean.ngrok-free.dev";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,60 +17,99 @@ Notifications.setNotificationHandler({
 });
 
 async function registerForPushNotifications() {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('Notification permission denied');
+      return null;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '6e4c8220-cc85-4785-8d04-eb67ad882c58'
+    });
+
+    console.log('Got token:', tokenData.data);
+    return tokenData.data;
+  } catch (e) {
+    console.error('Token error:', e.message);
+    return null;
   }
-  if (finalStatus !== 'granted') return null;
+}
 
-  // This gives ExponentPushToken[...] which works with Expo Push API
-  const token = (await Notifications.getExpoPushTokenAsync({
-    projectId: '6e4c8220-cc85-4785-8d04-eb67ad882c58' // your EAS project ID
-  })).data;
-
-  console.log('Expo Push Token:', token);
-  return token;
+async function registerDevice(pushToken) {
+  try {
+    console.log('Registering token:', pushToken);
+    const res = await fetch(`${SERVER_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: pushToken, device: 'Android' })
+    });
+    const data = await res.json();
+    console.log('Register response:', JSON.stringify(data));
+  } catch (e) {
+    console.error('Registration error:', e.message);
+  }
 }
 
 export default function App() {
-  const [stories, setStories]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [token, setToken]           = useState(null);
-  const notificationListener        = useRef();
-  const responseListener            = useRef();
+  const [stories, setStories]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
+  const [token, setToken]             = useState(null);
+  const [status, setStatus]           = useState('Starting...');
+  const notificationListener          = useRef();
+  const responseListener              = useRef();
 
   async function fetchNews() {
     try {
+      setStatus('Fetching news...');
       const res = await fetch(`${SERVER_URL}/news`);
       const data = await res.json();
       setStories(data.stories || []);
+      setStatus(`${data.count} stories loaded`);
     } catch (e) {
-      Alert.alert('Error', `Could not connect to server: ${e.message}`);
+      setStatus(`Error: ${e.message}`);
+      Alert.alert('Error', `Could not connect: ${e.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }
 
-  async function registerDevice(pushToken) {
-    try {
-      await fetch(`${SERVER_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: pushToken, device: 'Android' })
-      });
-      console.log('Device registered!');
-    } catch (e) {
-      console.error('Registration failed:', e.message);
-    }
-  }
+  useEffect(() => {
+    // Register for notifications
+    registerForPushNotifications().then(pushToken => {
+      if (pushToken) {
+        setToken(pushToken);
+        registerDevice(pushToken);
+        setStatus('Registered for notifications!');
+      } else {
+        setStatus('Notifications not available');
+      }
+    });
 
-useEffect(() => {
-  fetchNews();
-}, []);
+    fetchNews();
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(n => {
+      console.log('Notification received:', n);
+    });
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
+      console.log('Notification tapped:', r);
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener.current);
+      Notifications.removeNotificationSubscription(responseListener.current);
+    };
+  }, []);
 
   function StoryCard({ item }) {
     const [expanded, setExpanded] = useState(false);
@@ -96,6 +134,7 @@ useEffect(() => {
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#E63946" />
         <Text style={styles.loadingText}>Loading news...</Text>
+        <Text style={styles.statusText}>{status}</Text>
       </View>
     );
   }
@@ -106,11 +145,14 @@ useEffect(() => {
         <Text style={styles.headerTitle}>NewsApp</Text>
         <Text style={styles.headerSub}>{stories.length} stories</Text>
       </View>
+
       <FlatList
         data={stories}
         keyExtractor={(item, index) => item.id || String(index)}
         renderItem={({ item }) => <StoryCard item={item} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNews(); }} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNews(); }} />
+        }
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.centered}>
@@ -119,33 +161,36 @@ useEffect(() => {
           </View>
         }
       />
-      {token && (
-        <View style={styles.tokenBar}>
-          <Text style={styles.tokenText} numberOfLines={1}>Token: {token.slice(0, 40)}...</Text>
-        </View>
-      )}
+
+      {/* Status bar showing token and connection status */}
+      <View style={styles.statusBar}>
+        <Text style={styles.statusBarText} numberOfLines={1}>
+          {token ? `Token: ${token.slice(0, 35)}...` : status}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#F4F4F4' },
-  centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  loadingText:  { marginTop: 12, fontSize: 14, color: '#888' },
-  emptyText:    { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 8 },
-  header:       { backgroundColor: '#E63946', paddingTop: 50, paddingBottom: 14, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  headerTitle:  { fontSize: 22, fontWeight: '700', color: '#fff' },
-  headerSub:    { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
-  list:         { padding: 12 },
-  card:         { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
-  cardHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  badges:       { flexDirection: 'row', gap: 6 },
-  category:     { backgroundColor: '#E63946', color: '#fff', fontSize: 10, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  region:       { backgroundColor: '#457B9D', color: '#fff', fontSize: 10, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  source:       { fontSize: 11, color: '#999' },
-  headline:     { fontSize: 16, fontWeight: '700', color: '#1D1D1D', lineHeight: 22 },
-  summary:      { fontSize: 14, color: '#444', lineHeight: 21, marginTop: 10 },
-  tapHint:      { fontSize: 11, color: '#bbb', marginTop: 8, textAlign: 'right' },
-  tokenBar:     { backgroundColor: '#1D1D1D', padding: 8, paddingHorizontal: 14 },
-  tokenText:    { fontSize: 10, color: '#888' },
+  container:      { flex: 1, backgroundColor: '#F4F4F4' },
+  centered:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingText:    { marginTop: 12, fontSize: 14, color: '#888' },
+  statusText:     { marginTop: 8, fontSize: 12, color: '#aaa' },
+  emptyText:      { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 8 },
+  header:         { backgroundColor: '#E63946', paddingTop: 50, paddingBottom: 14, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  headerTitle:    { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerSub:      { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  list:           { padding: 12 },
+  card:           { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
+  cardHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  badges:         { flexDirection: 'row', gap: 6 },
+  category:       { backgroundColor: '#E63946', color: '#fff', fontSize: 10, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  region:         { backgroundColor: '#457B9D', color: '#fff', fontSize: 10, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  source:         { fontSize: 11, color: '#999' },
+  headline:       { fontSize: 16, fontWeight: '700', color: '#1D1D1D', lineHeight: 22 },
+  summary:        { fontSize: 14, color: '#444', lineHeight: 21, marginTop: 10 },
+  tapHint:        { fontSize: 11, color: '#bbb', marginTop: 8, textAlign: 'right' },
+  statusBar:      { backgroundColor: '#1D1D1D', padding: 8, paddingHorizontal: 14 },
+  statusBarText:  { fontSize: 10, color: '#888' },
 });
