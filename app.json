@@ -1,29 +1,44 @@
 {
-  "expo": {
-    "name": "NewsApp",
-    "slug": "NewsApp",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "expo":
+    {
+        "name": "NewsApp",
+        "slug": "NewsApp",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "splash":
+        {
+            "image": "./assets/splash-icon.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
+        "ios":
+        {
+            "supportsTablet": true
+        },
+        "android":
+        {
+            "adaptiveIcon":
+            {
+                "backgroundColor": "#E6F4FE",
+                "foregroundImage": "./assets/android-icon-foreground.png",
+                "backgroundImage": "./assets/android-icon-background.png",
+                "monochromeImage": "./assets/android-icon-monochrome.png"
+            },
+            "package": "com.anonymous.NewsApp",
+            "googleServicesFile": "./android/app/google-services.json"
+        },
+        "web":
+        {
+            "favicon": "./assets/favicon.png"
+        },
+        "extra":
+        {
+            "eas":
+            {
+                "projectId": "6e4c8220-cc85-4785-8d04-eb67ad882c58"
+            }
+        }
     }
-  }
 }
