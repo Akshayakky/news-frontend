@@ -25,7 +25,12 @@ async function registerForPushNotifications() {
     finalStatus = status;
   }
   if (finalStatus !== 'granted') return null;
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
+
+  // This gives ExponentPushToken[...] which works with Expo Push API
+  const token = (await Notifications.getExpoPushTokenAsync({
+    projectId: '6e4c8220-cc85-4785-8d04-eb67ad882c58' // your EAS project ID
+  })).data;
+
   console.log('Expo Push Token:', token);
   return token;
 }

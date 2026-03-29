@@ -26,8 +26,7 @@
                 "backgroundImage": "./assets/android-icon-background.png",
                 "monochromeImage": "./assets/android-icon-monochrome.png"
             },
-            "package": "com.anonymous.NewsApp",
-            "googleServicesFile": "./google-services.json"
+            "package": "com.anonymous.NewsApp"
         },
         "web":
         {
