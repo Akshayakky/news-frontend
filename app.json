@@ -28,6 +28,19 @@
             },
             "package": "com.anonymous.NewsApp"
         },
+        "plugins":
+        [
+            "expo-router",
+            [
+                "expo-notifications",
+                {
+                    "icon": "./assets/images/icon.png",
+                    "color": "#E63946",
+                    "sounds":
+                    []
+                }
+            ]
+        ],
         "web":
         {
             "favicon": "./assets/favicon.png"
