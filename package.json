@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "expo": "55.0.10-canary-20260328-2049187",
+    "expo-constants": "55.0.10-canary-20260328-2049187",
     "expo-device": "55.0.11-canary-20260328-2049187",
+    "expo-linking": "55.0.10-canary-20260328-2049187",
     "expo-notifications": "55.0.15-canary-20260328-2049187",
-    "expo-router": "55.0.9-canary-20260328-2049187",
     "expo-status-bar": "55.0.5-canary-20260328-2049187",
     "react": "19.2.0",
-    "react-native": "0.83.4"
+    "react-native": "0.83.4",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0"
   },
   "private": true
 }
