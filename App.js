@@ -81,17 +81,47 @@ function StoryCard({ item, index }) {
   }, []);
 
   const categoryColor = {
-    India: '#E63946', World: '#457B9D', Tech: '#2A9D8F',
+    India: '#FF9933', World: '#457B9D', Tech: '#2A9D8F',
     Business: '#E9C46A', Trading: '#F4A261', Science: '#9B5DE5',
     Sports: '#43AA8B', Politics: '#E76F51', Local: '#6D6875',
   }[item.category] || '#888';
 
-  return (
+return (
     <Animated.View style={[
       styles.card,
       { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
     ]}>
+      <TouchableOpacity
+        onPress={() => setExpanded(!expanded)}
+        activeOpacity={0.97}
+      >
+        {/* Category + Source row */}
+        <View style={styles.cardMeta}>
+          <View style={[styles.categoryPill, { backgroundColor: categoryColor + '18' }]}>
+            <View style={[styles.categoryDot, { backgroundColor: categoryColor }]} />
+            <Text style={[styles.categoryText, { color: categoryColor }]}>
+              {item.category}
+            </Text>
+          </View>
+          <Text style={styles.sourceText}>{item.source?.replace('Google:', '') || ''}</Text>
+        </View>
 
+        {/* Headline */}
+        <Text style={styles.headline}>{item.headline}</Text>
+
+        {/* Expanded summary */}
+        {expanded && (
+          <Text style={styles.summary}>{item.summary}</Text>
+        )}
+
+        {/* Bottom row */}
+        <View style={styles.cardBottom}>
+          <Text style={styles.timeAgo}>{timeAgo(item.publishedAt)}</Text>
+          <Text style={styles.tapHint}>
+            {expanded ? 'Show less ↑' : 'Read more ↓'}
+          </Text>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -108,7 +138,7 @@ function PreferencesScreen({ token, onSave, onBack }) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${SERVER_URL}/preferences/${encodeURIComponent(token)}`);
+        const res = await fetch(`${SERVER_URL}/preferences?token=${encodeURIComponent(token)}`);
         if (res.ok) {
           const data = await res.json();
           setSelected(data.interests || []);
