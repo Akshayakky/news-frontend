@@ -1,8 +1,8 @@
 {
     "expo":
     {
-        "name": "NewsApp",
-        "slug": "NewsApp",
+"name": "Newsbyte",
+"slug": "Newsbyte",
         "version": "1.0.0",
         "orientation": "portrait",
         "icon": "./assets/icon.png",
@@ -28,7 +28,7 @@
                 "backgroundImage": "./assets/android-icon-background.png",
                 "monochromeImage": "./assets/android-icon-monochrome.png"
             },
-            "package": "com.anonymous.NewsApp"
+"package": "com.anonymous.Newsbyte"
         },
         "plugins":
         [
