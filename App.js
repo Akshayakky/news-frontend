@@ -37,6 +37,7 @@ const CATEGORIES = [
   { id: 'Sports',   label: 'Sports',   emoji: '⚽' },
   { id: 'Politics', label: 'Politics', emoji: '🏛️' },
   { id: 'Local',    label: 'Local',    emoji: '📍' },
+  { id: 'Crypto', label: 'Crypto', emoji: '₿' },
 ];
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ function StoryCard({ item, index }) {
   const categoryColor = {
     India: '#FF9933', World: '#457B9D', Tech: '#2A9D8F',
     Business: '#E9C46A', Trading: '#F4A261', Science: '#9B5DE5',
-    Sports: '#43AA8B', Politics: '#E76F51', Local: '#6D6875',
+    Sports: '#43AA8B', Politics: '#E76F51', Local: '#6D6875',Crypto: '#F7931A',
   }[item.category] || '#888';
 
 return (
@@ -315,7 +316,9 @@ export default function App() {
   const [userLocation, setLocation]   = useState({});
   const [hasPrefs, setHasPrefs]       = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+const [page, setPage] = useState(1);
 
+const PAGE_SIZE = 10;
   const notificationListener = useRef();
   const responseListener     = useRef();
 
@@ -358,7 +361,7 @@ export default function App() {
   // ── LOAD PREFERENCES ────────────────────────────────────────────────────────
   async function loadPreferences(pushToken) {
     try {
-      const res = await fetch(`${SERVER_URL}/preferences/${encodeURIComponent(pushToken)}`);
+const res = await fetch(`${SERVER_URL}/preferences?token=${encodeURIComponent(pushToken)}`);
       if (res.ok) {
         const data = await res.json();
         setInterests(data.interests || []);
@@ -369,21 +372,28 @@ export default function App() {
   }
 
   // ── FETCH NEWS ──────────────────────────────────────────────────────────────
-  async function fetchNews(category = activeCategory) {
-    try {
-      setStatus('Fetching news...');
-      let url = `${SERVER_URL}/news`;
-      const params = new URLSearchParams();
-      if (token) params.append('token', token);
-      if (category && category !== 'All') params.append('category', category);
-      const qs = params.toString();
-      if (qs) url += `?${qs}`;
+async function fetchNews(category = activeCategory, pushToken = token, pageNum = 1) {
+  try {
+    setStatus('Fetching news...');
+    let url = `${SERVER_URL}/news`;
+const params = new URLSearchParams();
+if (pushToken) params.append('token', pushToken);
+if (category && category !== 'All') params.append('category', category);
+params.append('page', pageNum);
+params.append('limit', PAGE_SIZE);
+const qs = params.toString();
+if (qs) url += `?${qs}`;      // ← add this line
 
-      const res = await fetch(url);
+const res = await fetch(url);
       if (!res.ok) throw new Error(`${res.status}`);
-      const data = await res.json();
-      setStories(data.stories || []);
-      setStatus(`${data.count} stories`);
+const data = await res.json();
+setStatus(`${data.count} stories`);
+if (pageNum === 1) {
+  setStories(data.stories || []);
+} else {
+  setStories(prev => [...prev, ...(data.stories || [])]);
+}
+  
     } catch (e) {
       setStatus(`Error: ${e.message}`);
       Alert.alert('Connection Error', `Could not connect to server.\n${e.message}`);
@@ -401,8 +411,10 @@ export default function App() {
         setToken(pushToken);
         await registerDevice(pushToken);
         await loadPreferences(pushToken);
+        await fetchNews('All', pushToken);           // ← then fetch with prefs loaded
+      } else {
+        await fetchNews('All');
       }
-      await fetchNews('All');
     })();
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
@@ -415,11 +427,12 @@ export default function App() {
   }, []);
 
   // ── CATEGORY CHANGE ─────────────────────────────────────────────────────────
-  async function handleCategoryChange(cat) {
-    setCategory(cat);
-    setLoading(true);
-    await fetchNews(cat);
-  }
+async function handleCategoryChange(cat) {
+  setCategory(cat);
+  setPage(1);          // ← reset page
+  setLoading(true);
+  await fetchNews(cat, token, 1);
+}
 
   // ── SAVE PREFERENCES ────────────────────────────────────────────────────────
   function handlePrefsSaved(interests, location) {
@@ -585,6 +598,14 @@ onPress={() => setMenuOpen(!menuOpen)}
               </Text>
             </View>
           }
+          onEndReached={() => {
+    if (!loading) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchNews(activeCategory, token, nextPage);
+    }
+  }}
+  onEndReachedThreshold={0.3}
         />
       )}
 
